@@ -6,24 +6,33 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Net;
 using Newtonsoft.Json;
-using System.Security.Claims;
+using Microsoft.Extensions.Logging;
+using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using System.Diagnostics.Eventing.Reader;
 
 namespace Assignment.Pages
 {
+	[AutoValidateAntiforgeryToken]
 	public class LoginModel : PageModel
 	{
-		private readonly ILogger _logger;
-
 		[BindProperty]
 		public Login LModel { get; set; }
 		private readonly SignInManager<ApplicationMember> signInManager;
-		public LoginModel(SignInManager<ApplicationMember> signInManager, ILogger<LoginModel> logger)
+		private readonly ILogger<LoginModel> _logger;
+		private readonly IHttpContextAccessor _contextAccessor;
+		public LoginModel(SignInManager<ApplicationMember> signInManager, ILogger<LoginModel> logger, IHttpContextAccessor contextAccessor)
 		{
-			_logger = logger;
 			this.signInManager = signInManager;
+			_logger = logger;
+			_contextAccessor = contextAccessor;
 		}
 		public void OnGet()
 		{
+			if (_contextAccessor.HttpContext.Session.GetString("ModelError") != null)
+			{
+				ModelState.AddModelError("", _contextAccessor.HttpContext.Session.GetString("ModelError"));
+			}
 		}
 		public bool ValidateCaptcha()
 		{
@@ -48,7 +57,6 @@ namespace Assignment.Pages
 						myObject jsonObject = JsonConvert.DeserializeObject<myObject>(jsonResponse);
 
 						result = Convert.ToBoolean(jsonObject.success);
-						_logger.LogInformation(jsonResponse.ToString());
 					}
 				}
 
@@ -60,28 +68,38 @@ namespace Assignment.Pages
 			}
 		}
 
-	public async Task<IActionResult> OnPostAsync()
+	public async Task<IActionResult> OnPostAsync(string submitButton)
 		{
 			if (ModelState.IsValid)
 			{
 				if (!ValidateCaptcha())
 				{
-					var identityResult = await signInManager.PasswordSignInAsync(LModel.Email, LModel.Password, LModel.RememberMe, false);
-					if (identityResult.Succeeded)
+					if (submitButton == "button1")
 					{
-						//Create the security context
-						var claims = new List<Claim> {
-							new Claim(ClaimTypes.Name, "c@c.com"),
-							new Claim(ClaimTypes.Email, "c@c.com"),
-							new Claim("Department", "HR")
-						};
-
-						var i = new ClaimsIdentity(claims, "MyCookieAuth");
-						ClaimsPrincipal claimsPrincipal = new ClaimsPrincipal(i);
-						await HttpContext.SignInAsync("MyCookieAuth", claimsPrincipal);
-						return RedirectToPage("Homepage");
+						_contextAccessor.HttpContext.Session.SetString("Email",LModel.Email);
+						return RedirectToPage("ForgetPassword");
 					}
-				}
+					else if (submitButton == "button2") {
+						var identityResult = await signInManager.PasswordSignInAsync(LModel.Email, LModel.Password, LModel.RememberMe, lockoutOnFailure: true);
+						if (identityResult.Succeeded)
+						{
+							_contextAccessor.HttpContext.Session.Remove("ModelError");
+							return RedirectToPage("TwoFactorEnabled");
+						}
+						else if (identityResult.IsLockedOut)
+						{
+							ModelState.AddModelError("", "Account has been locked out, please try again in 20 minutes");
+						}
+						else
+						{
+							ModelState.AddModelError("", "Username or password is incorrect");
+						}
+					}
+                }
+				else
+				{
+                    ModelState.AddModelError("", "Captcha verification failed, please try again.");
+                }
 			}
 			return Page();
 		}

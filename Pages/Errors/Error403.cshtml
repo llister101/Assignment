@@ -1,4 +1,10 @@
 ﻿@page
 @model Assignment.Pages.Errors.Error403Model
 @{
+    ViewData["title"] = "Forbidden";
 }
+<div class="container" style="text-align: center; color: #888;">
+    <h1 style="font-size: 150px; color: #888; margin-bottom: 0px;">403</h1>
+    <p style="font-size: 50px; ">You are not allowed to access this page.</p>
+    <p>Please navigate back to <a href="https://localhost:7278/Homepage">home page</a>.</p>
+</div>

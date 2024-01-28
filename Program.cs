@@ -1,50 +1,52 @@
 using Assignment.Models;
+using Assignment.ViewModels;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddDbContext<AuthDbContext>();
-builder.Services.AddIdentity<ApplicationMember, IdentityRole>().AddEntityFrameworkStores<AuthDbContext>();
-builder.Services.AddDataProtection();
-
-builder.Services.AddAuthentication("MyCookieAuth").AddCookie("MyCookieAuth", options =>
+builder.Services.AddIdentity<ApplicationMember, IdentityRole>(options =>
 {
-	options.Cookie.Name = "MyCookieAuth";
-	options.AccessDeniedPath = "/Error/Error403";
-});
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequiredLength = 12;
+    options.Password.RequiredUniqueChars = 1;
 
-//builder.Services.AddAuthorization(options =>
-//{
-//    options.AddPolicy("MustBelongToHRDepartment",
-//    policy => policy.RequireClaim("Department", "HR"));
-//});
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(20);
+    options.Lockout.MaxFailedAccessAttempts = 3;
+    options.Lockout.AllowedForNewUsers = true;
+
+    options.Tokens.AuthenticatorTokenProvider = TokenOptions.DefaultAuthenticatorProvider;
+}).AddEntityFrameworkStores<AuthDbContext>()
+.AddDefaultTokenProviders();
+
+builder.Services.AddSingleton<IEmailSender, EmailSender>();
+
+builder.Services.AddDataProtection();
 
 builder.Services.ConfigureApplicationCookie(Config =>
 {
-	Config.LoginPath = "/Login";
+    Config.ExpireTimeSpan = TimeSpan.FromMinutes(20);
+    Config.LoginPath = "/Login";
+    Config.LogoutPath = "/Logout";
+    Config.AccessDeniedPath = "/Errors/Error401";
 });
 
+
+builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
 	options.IdleTimeout = TimeSpan.FromMinutes(20);
-});
-
-builder.Services.Configure<IdentityOptions>(options =>
-{
-	options.Password.RequireDigit = true;
-	options.Password.RequireLowercase = true;
-	options.Password.RequireNonAlphanumeric = true;
-	options.Password.RequireUppercase = true;
-	options.Password.RequiredLength = 12;
-	options.Password.RequiredUniqueChars = 1;
-
-	options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(20);
-	options.Lockout.MaxFailedAccessAttempts = 3;
-	options.Lockout.AllowedForNewUsers = true;
-
-	options.User.RequireUniqueEmail = true;
+    options.Cookie.IsEssential = true;
+	options.Cookie.HttpOnly = true;
 });
 
 var app = builder.Build();
@@ -57,13 +59,14 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseStatusCodePagesWithRedirects("/errors/Error{0}");
+app.UseStatusCodePagesWithRedirects("/Errors/Error{0}");
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-app.UseRouting();
 app.UseSession();
+
+app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();

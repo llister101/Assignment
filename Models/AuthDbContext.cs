@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Assignment.Models
 {
-    public class AuthDbContext:IdentityDbContext<ApplicationMember>
+    public class AuthDbContext : IdentityDbContext<ApplicationMember>
     {
         private readonly IConfiguration _configuration;
 
@@ -17,5 +17,7 @@ namespace Assignment.Models
             string connectionString = _configuration.GetConnectionString("AuthConnectionString");
             optionsBuilder.UseSqlServer(connectionString);
         }
-    }
+
+		public DbSet<AuditLog> AuditLogs { get; set; }
+	}
 }
