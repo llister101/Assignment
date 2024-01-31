@@ -33,8 +33,6 @@ namespace Assignment.Pages
 		public IActionResult OnGet()
 		{
 			var email = _contextAccessor.HttpContext.Session.GetString("Email");
-			_logger.LogInformation(email);
-			_logger.LogInformation(User.FindFirstValue(ClaimTypes.Email));
 			if (email == null && User.FindFirstValue(ClaimTypes.Email) == null)
 			{
 				return RedirectToPage("Login");
