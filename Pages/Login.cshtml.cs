@@ -68,42 +68,42 @@ namespace Assignment.Pages
 			}
 		}
 
-	public async Task<IActionResult> OnPostAsync(string submitButton)
-		{
-			if (ModelState.IsValid)
+		public async Task<IActionResult> OnPostAsync(string submitButton)
 			{
-				if (!ValidateCaptcha())
+				if (ModelState.IsValid)
 				{
-					if (submitButton == "button1")
+					if (!ValidateCaptcha())
 					{
-						_contextAccessor.HttpContext.Session.SetString("Email",LModel.Email);
-						return RedirectToPage("ForgetPassword");
+						if (submitButton == "button1")
+						{
+							_contextAccessor.HttpContext.Session.SetString("Email",LModel.Email);
+							return RedirectToPage("ForgetPassword");
+						}
+						else if (submitButton == "button2") {
+							var identityResult = await signInManager.PasswordSignInAsync(LModel.Email, LModel.Password, LModel.RememberMe, lockoutOnFailure: true);
+							if (identityResult.Succeeded)
+							{
+								_contextAccessor.HttpContext.Session.Remove("ModelError");
+								return RedirectToPage("TwoFactorEnabled");
+							}
+							else if (identityResult.IsLockedOut)
+							{
+								ModelState.AddModelError("", "Account has been locked out, please try again in 20 minutes");
+							}
+							else
+							{
+								ModelState.AddModelError("", "Username or password is incorrect");
+							}
+						}
 					}
-					else if (submitButton == "button2") {
-						var identityResult = await signInManager.PasswordSignInAsync(LModel.Email, LModel.Password, LModel.RememberMe, lockoutOnFailure: true);
-						if (identityResult.Succeeded)
-						{
-							_contextAccessor.HttpContext.Session.Remove("ModelError");
-							return RedirectToPage("TwoFactorEnabled");
-						}
-						else if (identityResult.IsLockedOut)
-						{
-							ModelState.AddModelError("", "Account has been locked out, please try again in 20 minutes");
-						}
-						else
-						{
-							ModelState.AddModelError("", "Username or password is incorrect");
-						}
+					else
+					{
+						ModelState.AddModelError("", "Captcha verification failed, please try again.");
 					}
-                }
-				else
-				{
-                    ModelState.AddModelError("", "Captcha verification failed, please try again.");
-                }
+				}
+				return Page();
 			}
-			return Page();
 		}
-	}
 
 	public class myObject
 	{

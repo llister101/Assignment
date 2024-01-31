@@ -47,36 +47,6 @@ namespace Assignment.Pages
 			{
 				var dataProtectionProvider = DataProtectionProvider.Create("EncryptData");
 				var protector = dataProtectionProvider.CreateProtector("HiddenWow");
-
-				if (!Regex.IsMatch(RModel.Email, "^\\w+([.-]?\\w+)*@\\w+([.-]?\\w+)*(\\.\\w{2,3})+$"))
-				{
-				}
-				if (!Regex.IsMatch(RModel.Password, "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*\\W)[a-zA-Z\\d\\W]{12,}$"))
-				{
-				}
-				if(RModel.Password != RModel.ConfirmPassword){
-				}
-				if (!Regex.IsMatch(RModel.FirstName, "^[A-Za-z]*$"))
-				{
-				}
-				if (!Regex.IsMatch(RModel.LastName, "^[A-Za-z]*$"))
-				{
-				}
-				if (RModel.Gender == null)
-				{
-				}
-				if (!Regex.IsMatch(RModel.NRIC, "^[A-Za-z][0-9]{7}[A-Za-z]$"))
-				{
-				}
-				if ((DateTime.Parse(RModel.DateOfBirth) >= DateTime.Now))
-				{
-				}
-				if (new string[] {".pdf", ".docx"}.Any(x => x.ToLowerInvariant() == Path.GetExtension(RModel.Resume)))
-				{
-				}
-				if (RModel.WhoAmI == null)
-				{
-				}
 				var user = new ApplicationMember()
 				{
 					UserName = RModel.Email,

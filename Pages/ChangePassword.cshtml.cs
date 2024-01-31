@@ -1,10 +1,7 @@
 using Assignment.Models;
-using Assignment.ViewModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
-using System;
 using System.Security.Claims;
 using System.Web;
 
@@ -21,30 +18,44 @@ namespace Assignment.Pages
 		public string confirmPassword { get; set; }
 		private readonly AuthDbContext _context;
 		private readonly IHttpContextAccessor _contextAccessor;
-		private UserManager<ApplicationMember> _userManager { get; set;}
+		private UserManager<ApplicationMember> _userManager { get; set; }
 		private SignInManager<ApplicationMember> _signInManager { get; set; }
+		private ILogger<ChangePasswordModel> _logger { get; set; }
 
-		public ChangePasswordModel(AuthDbContext context, UserManager<ApplicationMember> userManager, SignInManager<ApplicationMember> signInManager, IHttpContextAccessor contextAccessor)
+		public ChangePasswordModel(AuthDbContext context, UserManager<ApplicationMember> userManager, SignInManager<ApplicationMember> signInManager, IHttpContextAccessor contextAccessor, ILogger<ChangePasswordModel> logger)
 		{
 			_context = context;
 			_userManager = userManager;
 			_signInManager = signInManager;
 			_contextAccessor = contextAccessor;
+			_logger = logger;
 		}
-		public void OnGet()
+		public IActionResult OnGet()
 		{
+			var email = _contextAccessor.HttpContext.Session.GetString("Email");
+			_logger.LogInformation(email);
+			_logger.LogInformation(User.FindFirstValue(ClaimTypes.Email));
+			if (email == null && User.FindFirstValue(ClaimTypes.Email) == null)
+			{
+				return RedirectToPage("Login");
+			}
+			return Page();
 		}
 
-        public async Task<IActionResult> OnPostAsync()
-        {
+		public async Task<IActionResult> OnPostAsync()
+		{
 			if (ModelState.IsValid)
 			{
 				var email = _contextAccessor.HttpContext.Session.GetString("Email");
-				if (email == null)
+				ApplicationMember user;
+				if (email != null)
 				{
-					return RedirectToPage("Login");
+					user = _context.Users.ToList().Where(member => member.Email == email).FirstOrDefault();
 				}
-				var user = _context.Users.ToList().Where(member => member.Email == email).FirstOrDefault();
+				else
+				{
+					user = _context.Users.ToList().Where(member => member.Email == User.FindFirstValue(ClaimTypes.Email)).FirstOrDefault();
+				}
 				var passwordcheck = await _signInManager.CheckPasswordSignInAsync(user, Password, false);
 				var oldpasswordcheck = await _signInManager.CheckPasswordSignInAsync(user, oldPassword, false);
 				var passwordcheck2 = _userManager.PasswordHasher.VerifyHashedPassword(user, user.PasswordHashed2, Password);
@@ -52,7 +63,8 @@ namespace Assignment.Pages
 				{
 					ModelState.AddModelError("", "Your password is wrong.");
 				}
-				else {
+				else
+				{
 					if (user.MinimumPasswordAge > DateTime.Now)
 					{
 						ModelState.AddModelError("", "Password has been changed recently, please wait a day after you last changed it.");
@@ -70,7 +82,8 @@ namespace Assignment.Pages
 						var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 						user.PasswordHashed2 = user.PasswordHash;
 						var result = await _userManager.ResetPasswordAsync(user, token, HttpUtility.HtmlEncode(Password));
-						if (result.Succeeded) {
+						if (result.Succeeded)
+						{
 							_context.AuditLogs.Add(new AuditLog
 							{
 								UserId = user.Id,
@@ -79,6 +92,7 @@ namespace Assignment.Pages
 							});
 							user.MinimumPasswordAge = DateTime.Now.AddDays(1);
 							user.MaximumPasswordAge = DateTime.Now.AddDays(120);
+							_contextAccessor.HttpContext.Session.Remove("Email");
 							await _context.SaveChangesAsync();
 							return RedirectToPage("Homepage");
 						}
@@ -90,6 +104,6 @@ namespace Assignment.Pages
 				}
 			}
 			return Page();
-        }
-    }
+		}
+	}
 }
